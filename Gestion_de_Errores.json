@@ -1,0 +1,174 @@
+{
+  "name": "Gestion de Errores",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 987560873,
+          "mode": "list",
+          "cachedResultName": "ERRORS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=987560873"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_Error": "={{ Date.now() }}",
+            "ID_Consulta": "={{ $('Start').item.json.id_consulta }}",
+            "Fecha_Hora": "={{new Date().toLocaleDateString();}}",
+            "Nodo": "={{ $('Start').item.json.nodo }}",
+            "Mensaje_Error": "=Error desconocido"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_Error",
+              "displayName": "ID_Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID_Consulta",
+              "displayName": "ID_Consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha_Hora",
+              "displayName": "Fecha_Hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Nodo",
+              "displayName": "Nodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Tipo_Error",
+              "displayName": "Tipo_Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Mensaje_Error",
+              "displayName": "Mensaje_Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Accion_Tomada",
+              "displayName": "Accion_Tomada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        448
+      ],
+      "id": "4602b9ce-41d7-458f-941e-e577f5a8344d",
+      "name": "Log Errores",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "id_consulta",
+              "type": "any"
+            },
+            {
+              "name": "nodo"
+            }
+          ]
+        }
+      },
+      "id": "1672d05a-c368-42bc-a7cf-75e995221ad8",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -304,
+        448
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Log Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "20afcae2-1972-4115-a771-989934b9d06f",
+  "meta": {
+    "instanceId": "20171f703fd16a690fa64930f505996473079639ec27570bd8942aa4597d8c09"
+  },
+  "nodeGroups": [],
+  "id": "1peCRiWaXwzSkGeM",
+  "tags": []
+}

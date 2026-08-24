@@ -1,0 +1,1087 @@
+{
+  "name": "Presupuestos v2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -816,
+        -16
+      ],
+      "id": "b4fd4c71-a457-4e3e-b706-21225c7cb91c",
+      "name": "Telegram Trigger",
+      "webhookId": "4eea5527-91d0-461a-9b8e-90a2fe255f7f",
+      "credentials": {
+        "telegramApi": {
+          "id": "Rzj8dv0GcRvHYkJb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        224
+      ],
+      "id": "8cba950b-344c-4807-87a7-d5092b482d2b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "SA9EBHUzbSf3nZb2",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('Parser').item.json.respuesta }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        -96
+      ],
+      "id": "9b3ac5fd-bfe6-462b-abc2-3a2072e06df6",
+      "name": "Send a text message",
+      "webhookId": "a8179cf2-28f8-4d50-a050-36687271b58a",
+      "credentials": {
+        "telegramApi": {
+          "id": "Rzj8dv0GcRvHYkJb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos un asistente comercial de una tienda de electrodomésticos, especializado en armar presupuestos para clientes que consultan por Telegram.\n\nTenés acceso a una herramienta (tool) de solo lectura conectada al catálogo real de productos y precios. Usala siempre que necesites verificar qué productos existen, sus precios o su estado — nunca respondas con datos de memoria ni inventes información: consultá la tool cada vez que haga falta. No tenés permiso para modificar el catálogo, solo para consultarlo.\n\nTarea 1 — Identificar el producto:\nBuscá en el catálogo (vía la tool) el producto que mejor coincida con lo que pidió el cliente, aunque el nombre no sea idéntico (ej: \"heladera\" → \"Heladera Whirlpool 300L\" es un match válido). Priorizá siempre similitud de significado por sobre coincidencia exacta de texto.\n\n- Si el pedido es claro y encontrás un único match razonable: avanzá directo a la Tarea 2.\n- Si el pedido es ambiguo (por ejemplo, coincide con más de un producto, o falta información clave como el tipo/tamaño/modelo): NO asumas ni elijas por tu cuenta. Preguntale al cliente para aclarar, y si hay varias opciones posibles, ofrecele una lista breve con los nombres para que elija. Podés repetir esta interacción tantas veces como sea necesario hasta tener claridad. Mientras estés en esta etapa, tu respuesta es solo la pregunta o la lista de opciones — no arms un presupuesto todavía.\n- Si después de intentar aclarar el cliente sigue sin poder especificar, o el producto que pide definitivamente no existe en el catálogo: no seas insistente. Redactá una respuesta indicando que no se encontró el producto solicitado, y dejá que el flujo avance igual hacia la validación humana, para que una persona decida cómo continuar (por ejemplo, ofrecer un producto similar o responder manualmente).\n\nTarea 2 — Armar el presupuesto (solo cuando el producto ya está identificado con certeza):\nRedactá una respuesta clara, breve y en tono cordial con el producto encontrado, su precio exacto según el catálogo y, si corresponde, alguna alternativa similar también disponible.\n\nTarea 3 — Armar el mail de validación (solo cuando corresponda enviarlo, ver reglas de \"requiereValidacionHumana\" más abajo):\nRedactá un correo breve dirigido al validador humano, explicando qué preguntó el cliente y qué respuesta se generó (o, si no se encontró el producto, explicá esa situación para que el validador decida cómo seguir). El mail debe incluir toda la información relevante para que el validador no tenga que buscar nada en otro lado.\n\nTarea 4 — Definir requiereValidacionHumana y estado:\n- Si todavía estás pidiéndole una aclaración al cliente (Tarea 1, caso ambiguo): \"requiereValidacionHumana\": false, \"estado\": \"recibido\". No completes mailAsunto, mailCuerpo ni id_producto (dejalos vacíos).\n- Si ya identificaste el producto y armaste el presupuesto, O si confirmaste que el producto no existe y hace falta que un humano decida: \"requiereValidacionHumana\": true, \"estado\": \"en analisis\".\n\nDevolvé SOLO un JSON válido (sin texto adicional, sin backticks) con exactamente estos campos:\n{\n  \"respuesta\": \"\",\n  \"requiereValidacionHumana\": false,\n  \"mailAsunto\": \"\",\n  \"mailCuerpo\": \"\",\n  \"estado\": \"\",\n  \"id_producto\": \"\"\n}\n\n\nMensaje: {{ $('Telegram Trigger').item.json.message.text }}\n",
+        "options": {
+          "maxIterations": 10
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -368,
+        -16
+      ],
+      "id": "5d698997-ed77-4109-b998-e19be014f0b8",
+      "name": "AI Agent",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -304,
+        240
+      ],
+      "id": "35d3d34f-b298-4b32-982d-3c243ba12592",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "jomagnone@gmail.com",
+        "subject": "={{ $('Parser').item.json.mailAsunto }}",
+        "message": "={{ $('Parser').item.json.mailCuerpo }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "fc9ee370-5017-470f-9b2d-08e5ec91df8b",
+      "name": "Send a message",
+      "webhookId": "b29951eb-41fe-4387-938f-53c821f0508f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "B1Ew2Idu34IT4weQ",
+          "name": "Cuenta Empresa"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst clean = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(clean);\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -16
+      ],
+      "id": "882ba72f-387c-47a2-9921-238f6f0614a7",
+      "name": "Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.data.approved }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    },
+                    "id": "c8719d45-d87c-4251-b312-53a6585f6cd3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "true"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9adedc66-1de5-4efc-abee-9b51171d500f",
+                    "leftValue": "={{ $json.data.approved }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        16
+      ],
+      "id": "a62535b8-4603-407b-8f37-f89abe21aac0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LOG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "pregunta": "={{ $('Telegram Trigger').item.json.message.text }}",
+            "estado": "Aprobado"
+          },
+          "matchingColumns": [
+            "pregunta"
+          ],
+          "schema": [
+            {
+              "id": "pregunta",
+              "displayName": "pregunta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "respuesta",
+              "displayName": "respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        -48
+      ],
+      "id": "b65f85ee-33c6-4d3d-979e-a038274077df",
+      "name": "Log Aprobado",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LOG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "pregunta": "={{ $('Telegram Trigger').item.json.message.text }}",
+            "estado": "Cancelado"
+          },
+          "matchingColumns": [
+            "pregunta"
+          ],
+          "schema": [
+            {
+              "id": "pregunta",
+              "displayName": "pregunta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "respuesta",
+              "displayName": "respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        128
+      ],
+      "id": "8961aea8-9586-4735-89da-d22711ad06f2",
+      "name": "Log Cancelado",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const id_consulta = Date.now(); // ej: 1723999812345\nreturn [{ json: { ...($input.first().json), id_consulta } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -16
+      ],
+      "id": "3a3fdfe5-18bd-48ab-93ea-a0986d58bde5",
+      "name": "Genero ID Consulta"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1peCRiWaXwzSkGeM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1peCRiWaXwzSkGeM",
+          "cachedResultName": "Gestion de Errores"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_consulta": "={{ $('Genero ID Consulta').item.json.id_consulta }}",
+            "nodo": "IA Agent"
+          },
+          "matchingColumns": [
+            "id_consulta"
+          ],
+          "schema": [
+            {
+              "id": "id_consulta",
+              "displayName": "id_consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nodo",
+              "displayName": "nodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        544
+      ],
+      "name": "Call Gestion de Errores",
+      "id": "5593d4e0-a710-41fa-b030-69d31ceebc63"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1peCRiWaXwzSkGeM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1peCRiWaXwzSkGeM",
+          "cachedResultName": "Gestion de Errores"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_consulta": "={{ $('Genero ID Consulta').item.json.id_consulta }}",
+            "nodo": "Log Eventos"
+          },
+          "matchingColumns": [
+            "id_consulta"
+          ],
+          "schema": [
+            {
+              "id": "id_consulta",
+              "displayName": "id_consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nodo",
+              "displayName": "nodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        448
+      ],
+      "name": "Call Gestion de Errores1",
+      "id": "506846ff-1d10-41fd-947d-8a7ecbebcbe9"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1peCRiWaXwzSkGeM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1peCRiWaXwzSkGeM",
+          "cachedResultName": "Gestion de Errores"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_consulta": "={{ $('Genero ID Consulta').item.json.id_consulta }}",
+            "nodo": "Mail al aprobador"
+          },
+          "matchingColumns": [
+            "id_consulta"
+          ],
+          "schema": [
+            {
+              "id": "id_consulta",
+              "displayName": "id_consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nodo",
+              "displayName": "nodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        432
+      ],
+      "name": "Call Gestion de Errores2",
+      "id": "bb211ce9-d092-4e32-a216-165ad10d7de6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1087b142-32f5-4200-967c-80827da13d39",
+              "leftValue": "={{ $json.requiereValidacionHumana }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        -16
+      ],
+      "id": "bea896d1-52d5-4270-8665-43a2ea89448a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1314052965,
+          "mode": "list",
+          "cachedResultName": "RAG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1314052965"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Estado",
+              "lookupValue": "Publicado"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -144,
+        240
+      ],
+      "id": "5bc91cb5-594e-4121-83da-c414812eb6bd",
+      "name": "Consulto RAG",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('Parser').item.json.respuesta }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        -224
+      ],
+      "id": "4ce8d2fe-3e96-43d9-86c9-34d6ba5ab8d4",
+      "name": "Enviar interaccion",
+      "webhookId": "a8179cf2-28f8-4d50-a050-36687271b58a",
+      "credentials": {
+        "telegramApi": {
+          "id": "Rzj8dv0GcRvHYkJb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LOG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "respuesta": "={{ $json.respuesta }}",
+            "estado": "={{ $json.estado }}",
+            "pregunta": "={{ $('Telegram Trigger').item.json.message.text }}",
+            "id_chat": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "id_producto": "={{ $json.id_producto }}",
+            "id_consulta": "={{ $('Genero ID Consulta').item.json.id_consulta }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_consulta",
+              "displayName": "id_consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_producto",
+              "displayName": "id_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_chat",
+              "displayName": "id_chat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pregunta",
+              "displayName": "pregunta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "respuesta",
+              "displayName": "respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        432,
+        -16
+      ],
+      "id": "e90c14c7-e69c-4ebf-be95-155a5c4a63e5",
+      "name": "Log Analisis",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LOG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "respuesta": "={{ $json.respuesta }}",
+            "estado": "=Respuesta Automatica",
+            "pregunta": "={{ $('Telegram Trigger').item.json.message.text }}",
+            "id_chat": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "id_producto": "={{ $json.id_producto }}",
+            "id_consulta": "={{ $('Genero ID Consulta').item.json.id_consulta }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_consulta",
+              "displayName": "id_consulta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_producto",
+              "displayName": "id_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_chat",
+              "displayName": "id_chat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pregunta",
+              "displayName": "pregunta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "respuesta",
+              "displayName": "respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        -224
+      ],
+      "id": "34ebfbb3-4906-4640-8ee2-17018b5534ea",
+      "name": "Log Automaticos",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Genero ID Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parser",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Gestion de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Parser": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Gestion de Errores2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Log Aprobado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Cancelado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Aprobado": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Genero ID Consulta": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Log Analisis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Automaticos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulto RAG": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar interaccion": {
+      "main": [
+        []
+      ]
+    },
+    "Log Analisis": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Gestion de Errores1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Automaticos": {
+      "main": [
+        [
+          {
+            "node": "Enviar interaccion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "11cbc2f1-f0f3-4742-94e0-ca6ea718d4df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "20171f703fd16a690fa64930f505996473079639ec27570bd8942aa4597d8c09"
+  },
+  "nodeGroups": [],
+  "id": "aQSZqBKlvkXs8hTo",
+  "tags": []
+}
