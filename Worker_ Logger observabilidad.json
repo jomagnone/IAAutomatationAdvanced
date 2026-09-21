@@ -1,0 +1,312 @@
+{
+  "name": "Worker: Logger observabilidad ",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ID_REQUEST"
+            },
+            {
+              "name": "ID_PRODUCT",
+              "type": "any"
+            },
+            {
+              "name": "ID_SESSION",
+              "type": "any"
+            },
+            {
+              "name": "QUESTION",
+              "type": "any"
+            },
+            {
+              "name": "ANSWER",
+              "type": "any"
+            },
+            {
+              "name": "STATUS ",
+              "type": "any"
+            },
+            {
+              "name": "Veredicto",
+              "type": "any"
+            },
+            {
+              "name": "try",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      "id": "22a4b616-3033-4adf-877d-d25065a75f5f",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        208,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "REQUEST",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_REQUEST": "={{ $json.ID_REQUEST }}",
+            "ID_PRODUCT": "={{ $json.ID_PRODUCT }}",
+            "ID_SESSION": "={{ $json.ID_SESSION }}",
+            "QUESTION": "={{ $json.QUESTION }}",
+            "ANSWER": "={{ $json.ANSWER }}",
+            "STATUS ": "={{ $json['STATUS '] }}",
+            "estado_veredicto": "={{ $json.Veredicto }}",
+            "try": "={{ $json.try }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_REQUEST",
+              "displayName": "ID_REQUEST",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID_PRODUCT",
+              "displayName": "ID_PRODUCT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID_SESSION",
+              "displayName": "ID_SESSION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "QUESTION",
+              "displayName": "QUESTION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ANSWER",
+              "displayName": "ANSWER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "STATUS ",
+              "displayName": "STATUS ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado_veredicto",
+              "displayName": "estado_veredicto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "try",
+              "displayName": "try",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        -224
+      ],
+      "id": "30f3d46d-596a-4989-a901-11de69ffa255",
+      "name": "LOG",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1724766404,
+          "mode": "list",
+          "cachedResultName": "WORKER",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1724766404"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_REQUEST": "={{ $('Start').first().json.ID_REQUEST }}",
+            "DATE_TIME": "={{ $now }}",
+            "WORKER": "OBSERBABILIDAD",
+            "CODE": "200"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_REQUEST",
+              "displayName": "ID_REQUEST",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "DATE_TIME",
+              "displayName": "DATE_TIME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "WORKER",
+              "displayName": "WORKER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CODE",
+              "displayName": "CODE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        -224
+      ],
+      "id": "d8768b8c-42aa-409e-b140-bd1186810d7b",
+      "name": "WORKER",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "LOG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LOG": {
+      "main": [
+        [
+          {
+            "node": "WORKER",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0607f47b-36f1-4d13-b7ef-5dafdfbde30d",
+  "meta": {
+    "instanceId": "20171f703fd16a690fa64930f505996473079639ec27570bd8942aa4597d8c09"
+  },
+  "nodeGroups": [],
+  "id": "9HtJAKtvz6hSQDWi",
+  "tags": []
+}

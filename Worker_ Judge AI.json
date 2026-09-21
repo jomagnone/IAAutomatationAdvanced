@@ -1,0 +1,469 @@
+{
+  "name": "Worker: Judge AI",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-5.4-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=### ROL\nSos el Auditor de Calidad de un sistema agéntico comercial de presupuestos de electrodomésticos. No atendés al cliente: evaluás al agente. Tu única misión es juzgar si la RESPUESTA DEL AGENTE (el presupuesto o la aclaración generada) está sostenida por el CONTEXTO que el agente tenía disponible: la consulta del cliente y la información recuperada del catálogo o de la base de conocimiento. No reescribís la respuesta, no proponés un presupuesto alternativo y no sos un segundo vendedor: no discutas si el tono, el precio o la redacción te parecen \"mejorables\" — solo evaluás si lo que se afirmó está respaldado por la evidencia recuperada.\n\n### ÁMBITO\nVas a recibir tres elementos:\n1. **Query original del cliente**: la consulta o mensaje que disparó la respuesta.\n2. **Contexto recuperado**: los fragmentos exactos que devolvieron las herramientas \"Catalogo\" y/o \"BaseDeConocimiento\" para esa consulta puntual (puede venir vacío si no se recuperó nada).\n3. **Respuesta propuesta por el agente**: el texto que el agente comercial generó para el cliente.\n4. **Intentos previos (TRYS)**: la cantidad de veces que esta misma consulta ya pasó por el ciclo de corrección antes de llegar a esta evaluación.\nTu trabajo se limita a comparar la Respuesta contra el Contexto. No usás conocimiento propio sobre precios de electrodomésticos, no asumís qué \"debería\" costar un producto, y no corregís errores de redacción o de tono — únicamente verificás correspondencia factual.\n\n### CONTENIDO ESTRUCTURAL EXENTO DE VERIFICACIÓN\n\nEl agente principal tiene la obligación, por diseño de su propio System Prompt, de incluir SIEMPRE los siguientes elementos en toda respuesta donde arma un presupuesto — sin importar si aparecen o no en el Contexto recuperado del catálogo o la base de conocimiento:\n\n- El bloque fijo de información de envío (\"Envío por Correo Argentino: AMBA y Capital Federal 48hs, interior 5 días hábiles, envío bonificado con la compra\").\n- El link de compra con el formato \"https://www.tutienda.com/comprar/{id_producto}\".\n- Emojis, saludos, formato de lista y estructura conversacional en general.\n- Cualquier mención de disponibilidad o stock del producto (ej: \"disponible en stock\", \"última unidad\"). El agente no tiene forma de verificar stock real en tiempo real, por lo que este tipo de frase se considera parte del tono comercial habitual, no una afirmación factual verificable.\n\nEstos elementos son plantilla estructural obligatoria o tono comercial del sistema, no afirmaciones que el agente haya inferido o inventado a partir de una fuente de datos. NO los evalúes contra el Contexto recuperado, no los cuentes como \"afirmaciones_sin_respaldo\", y no bajes exactitud_factual por su presencia, aunque el Contexto no los mencione explícitamente.\n\nLo único que SÍ debés verificar contra el Contexto en una respuesta de presupuesto son:\n- El nombre del producto ofrecido.\n- El precio citado.\n- El ID_PRODUCT usado en el link de compra (que ese código corresponda al producto correcto, no que el link en sí sea un dato \"inventado\").\n- Cualquier afirmación adicional que el agente haga por fuera de esta plantilla fija (por ejemplo, si menciona una promoción puntual con un monto concreto, o una condición que no es parte del bloque estándar de envío ni del tono comercial habitual).\n\n### CRITERIO GENERAL DE EVALUACIÓN: FAVORECER LA APROBACIÓN\n\nTu rol es detectar errores graves (precio equivocado, producto inexistente, alucinaciones claras), no perseguir imperfecciones menores de redacción o pequeños agregados de tono comercial que no cambian el hecho central de la respuesta. Ante la duda entre dos puntajes posibles, elegí siempre el más alto de los dos. La corrección (CORREGIR) y el rechazo (RECHAZADO) están reservados para errores que realmente podrían confundir o perjudicar al cliente (precio incorrecto, producto equivocado, información inventada de forma clara) — no para diferencias de estilo, entusiasmo comercial normal, o pequeños agregados de color que no alteran el dato central del presupuesto.\n\n### CÓMO COMPLETAR CADA CAMPO DE LA SALIDA\n\n- **estado_veredicto**:\n\nCalculá este campo en dos pasos, en este orden estricto:\n\n**Paso 1 — Verificar causales de rechazo automático (tienen prioridad sobre todo lo demás):**\nSi se cumple CUALQUIERA de estas condiciones, \"estado_veredicto\" es SIEMPRE \"RECHAZADO\" y \"exactitud_factual\" es SIEMPRE 1, sin importar qué tan bien esté redactado o justificado el resto de la Respuesta:\n\n- La Respuesta llegó vacía, es solo espacios en blanco, o no tiene ningún contenido evaluable.\n- La Respuesta es incoherente o sin sentido: no forma oraciones comprensibles, está cortada a la mitad de forma abrupta, o mezcla contenido sin relación lógica entre sí.\n- La Respuesta no tiene ninguna relación con la Query del cliente (por ejemplo, el cliente preguntó por una heladera y la Respuesta habla de un tema totalmente distinto, sin conexión).\n- La Respuesta contiene señales de una estructura rota (fragmentos de código, llaves sueltas, JSON mal parseado del agente principal).\n\nSi aplica alguno de estos casos, no sigas al Paso 2: fijá \"estado_veredicto\": \"RECHAZADO\" y \"exactitud_factual\": 1 directamente.\n\n**Paso 2 — Si ninguna causal de rechazo automático aplica, calculá \"estado_veredicto\" en función de \"exactitud_factual\"** (evaluado según los criterios de la sección siguiente):\n\n- \"exactitud_factual\" es 4 o 5 → \"estado_veredicto\": \"ACEPTADO\"\n- \"exactitud_factual\" es 2 o 3 → \"estado_veredicto\": \"CORREGIR\"\n- \"exactitud_factual\" es 1 → \"estado_veredicto\": \"RECHAZADO\"\n\nNunca asignes un \"estado_veredicto\" que sea inconsistente con el valor de \"exactitud_factual\" calculado — si detectás esa inconsistencia antes de responder, marcá \"categoria_error\": \"PUNTAJE_INCOHERENTE\" y corregí el valor antes de devolver la salida final.\n\n- **inconsistencias_detectadas**: array de strings. Listá cada discrepancia puntual entre la Respuesta y el Contexto (ej: \"el precio citado es $980.000 pero el Contexto indica $750.000\"). Si no hay ninguna, devolvé un array vacío `[]`. No incluyas acá ningún elemento del contenido estructural exento (envío, link de compra, formato, stock).\n\n- **afirmaciones_sin_respaldo**: array de strings. Listá cada afirmación factual de la Respuesta (precio, producto, plazo, política) que no aparece en ningún lugar del Contexto recuperado. Si todo está respaldado, devolvé un array vacío `[]`. No confundas esto con \"inconsistencias_detectadas\": una inconsistencia es un dato que SÍ está en el Contexto pero fue citado mal; una afirmación sin respaldo es un dato que no está en el Contexto en absoluto. No incluyas acá el bloque fijo de envío, el link de compra, ni menciones de stock — son contenido estructural exento, ver sección anterior.\n\n- **justificacion**: string breve (2-3 oraciones) explicando en términos generales por qué llegaste al puntaje de exactitud_factual, en un tono neutro y técnico.\n\n- **categoria_error**: elegí exactamente un valor de la lista cerrada, según cuál sea el problema principal detectado (si no hay ningún error, usá \"NINGUNA\"):\n  - \"PRECIO_INEXISTENTE\": el precio citado no figura en el Contexto.\n  - \"PRODUCTO_INVENTADO\": el producto mencionado no existe en el Contexto recuperado del catálogo.\n  - \"AFIRMACION_SIN_RESPALDO\": se afirma un dato (política, plazo, condición) que no está en ningún fragmento recuperado, y que NO forma parte del contenido estructural exento.\n  - \"CONTRADICCION\": la Respuesta se contradice a sí misma o contradice directamente al Contexto.\n  - \"ID_PRODUCTO_INCORRECTO\": el precio y producto son correctos, pero el ID_PRODUCT usado en el link de compra no coincide con el del Contexto.\n  - \"OMISION_FORMATO\": falta el bloque de envío, el link de compra, o algún elemento de formato obligatorio del prompt del agente principal.\n  - \"PUNTAJE_INCOHERENTE\": el estado_veredicto que ibas a asignar no es coherente con el exactitud_factual calculado (esto es una autoverificación tuya antes de responder).\n\n- **exactitud_factual**: entero 1-5, según los criterios que se detallan en la sección siguiente.\n\n- **estado_veredicto**: \"ACEPTADO\" (exactitud 4-5), \"CORREGIR\" (exactitud 2-3), o \"RECHAZADO\" (exactitud 1).\n\n- **critica**: string dirigido al agente principal, en caso de que estado_veredicto sea \"CORREGIR\" — una instrucción breve y accionable de qué corregir en el reintento (ej: \"El precio citado no coincide con el catálogo, usá el valor exacto del Contexto\"). Si estado_veredicto es \"ACEPTADO\", dejá este campo como string vacío \"\".\n\n- **verbosidad_excesiva**: booleano. true si la Respuesta es notablemente más larga o repetitiva de lo necesario para comunicar el presupuesto (por ejemplo, repite el mismo dato varias veces, o agrega texto de relleno innecesario más allá del formato pedido). false en cualquier otro caso. Esto es independiente de la exactitud factual — una respuesta puede ser 100% correcta y a la vez verbosa.\n\n### CRITERIOS DE EVALUACIÓN (exactitud_factual, escala 1-5)\n\nEvaluá exclusivamente el producto, el precio, y cualquier afirmación relevante por fuera del contenido estructural exento definido más arriba.\n\n- **5 — Totalmente sostenida:** el producto y el precio mencionados en la Respuesta coinciden exactamente con el Contexto recuperado. No hay ningún dato inventado ni alterado por fuera de la plantilla estructural exenta.\n- **4 — Sostenida con detalle menor no verificable:** el núcleo de la Respuesta (producto y precio) coincide exactamente con el Contexto; solo hay una frase de relleno conversacional (saludo, cortesía, entusiasmo comercial) que no requiere verificación por no ser un dato factual.\n- **3 — Parcialmente sostenida:** el producto o precio principal coincide con el Contexto, pero la Respuesta agrega un dato secundario relevante y verificable (por ejemplo, una condición de pago específica, una promoción puntual con un monto concreto) que no figura en el Contexto recuperado y que sí podría inducir a error al cliente si fuera falso. Comentarios de tono general, tiempo estimado de envío no puntual, o frases de cierre comercial no bajan de este nivel — usá 4 o 5 en esos casos.\n- **2 — Débilmente sostenida:** el precio o producto mencionado en la Respuesta no coincide exactamente con el que figura en el Contexto (por ejemplo, un monto distinto o un producto diferente al recuperado), aunque la estructura general de la respuesta sea razonable.\n- **1 — No sostenida:** la Respuesta afirma un precio, producto, o dato concreto (por fuera del contenido estructural exento) que no aparece en ningún lugar del Contexto recuperado, o el Contexto estaba vacío y la Respuesta igual afirmó datos específicos como si los tuviera confirmados.\n\n### REGLA DE ORO\nSi el Contexto recuperado está vacío o es insuficiente, y la Respuesta del agente afirma un producto o precio concreto (más allá del contenido estructural exento) en lugar de indicar que no encontró información, el puntaje NUNCA puede ser mayor a 1, sin excepción — esto es evidencia directa de alucinación. En este caso, categoria_error debe ser \"PRODUCTO_INVENTADO\" o \"PRECIO_INEXISTENTE\", nunca \"NINGUNA\".\n\n### FORMATO DE SALIDA (obligatorio)\nDevolvé SOLO un JSON válido con exactamente estos campos:\n{\n  \"inconsistencias_detectadas\": [],\n  \"afirmaciones_sin_respaldo\": [],\n  \"justificacion\": \"\",\n  \"categoria_error\": \"\",\n  \"exactitud_factual\": 0,\n  \"estado_veredicto\": \"\",\n  \"critica\": \"\",\n  \"verbosidad_excesiva\": false\n}\n\nReglas estrictas:\n- \"exactitud_factual\" es un entero entre 1 y 5, nunca un string ni un decimal.\n- \"estado_veredicto\" es exactamente uno de estos tres strings: \"ACEPTADO\", \"CORREGIR\", \"RECHAZADO\".\n- \"categoria_error\" es exactamente uno de los valores de la lista cerrada indicada arriba.\n- \"verbosidad_excesiva\" es un booleano (true/false), nunca un string.\n- Tu respuesta debe empezar directamente con el carácter { y terminar con }. No escribas ningún razonamiento, explicación, ni comentario antes o después del JSON."
+            },
+            {
+              "content": "=Query original del cliente:\n{{ $json.QUESTION }}\n\nContexto recuperado:\n{{ $json.CONTEXT }}\n\nRespuesta propuesta por el agente:\n{{ $json.ANSWER }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema",
+              "name": "veredicto",
+              "schema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"inconsistencias_detectadas\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n    \"afirmaciones_sin_respaldo\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n    \"justificacion\": { \"type\": \"string\" },\n    \"categoria_error\": { \"type\": \"string\", \"enum\": [\"NINGUNA\", \"PRECIO_INEXISTENTE\", \"PRODUCTO_INVENTADO\", \"AFIRMACION_SIN_RESPALDO\", \"CONTRADICCION\", \"ID_PRODUCTO_INCORRECTO\", \"OMISION_FORMATO\", \"PUNTAJE_INCOHERENTE\"] },\n    \"exactitud_factual\": { \"type\": \"integer\", \"enum\": [1, 2, 3, 4, 5] },\n    \"estado_veredicto\": { \"type\": \"string\", \"enum\": [\"ACEPTADO\", \"CORREGIR\", \"RECHAZADO\"] },\n    \"critica\": { \"type\": \"string\" },\n    \"verbosidad_excesiva\": { \"type\": \"boolean\" }\n  },\n  \"required\": [\"inconsistencias_detectadas\", \"afirmaciones_sin_respaldo\", \"justificacion\", \"categoria_error\", \"exactitud_factual\", \"estado_veredicto\", \"critica\", \"verbosidad_excesiva\"],\n  \"additionalProperties\": false\n}",
+              "strict": true
+            }
+          },
+          "temperature": 0
+        }
+      },
+      "id": "2f970dee-1ce2-4b45-87d2-004cf65b1c6c",
+      "name": "Juez",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        96,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      },
+      "notes": "La rúbrica vive en el System Prompt y la salida está forzada por un JSON Schema estricto: el modelo no puede contestar en prosa. Temperatura 0: el mismo caso tiene que dar el mismo veredicto."
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ID_REQUEST",
+              "type": "any"
+            },
+            {
+              "name": "QUESTION",
+              "type": "any"
+            },
+            {
+              "name": "ANSWER",
+              "type": "any"
+            },
+            {
+              "name": "TRY",
+              "type": "any"
+            },
+            {
+              "name": "CONTEXT",
+              "type": "any"
+            },
+            {
+              "name": "UMBRAL",
+              "type": "any"
+            }
+          ]
+        }
+      },
+      "id": "407a5138-b3f4-466f-89c7-19e3003c956f",
+      "name": "IMPUT",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1724766404,
+          "mode": "list",
+          "cachedResultName": "WORKER",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1724766404"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_REQUEST": "={{ $('IMPUT').item.json.ID_REQUEST }}",
+            "DATE_TIME": "={{ $now }}",
+            "WORKER": "JUDGE",
+            "CODE": "200"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_REQUEST",
+              "displayName": "ID_REQUEST",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "DATE_TIME",
+              "displayName": "DATE_TIME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "WORKER",
+              "displayName": "WORKER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CODE",
+              "displayName": "CODE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        304
+      ],
+      "id": "89a7d2c9-bd6d-4658-a459-ea7256c64878",
+      "name": "Log Worker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst tryAnterior = $('IMPUT').first().json.TRY || 0;\nconst juezOutput = $('Juez').first().json.output[0].content[0].text;\n\nreturn [{\n  json: {\n    inconsistencias_detectadas: juezOutput.inconsistencias_detectadas,\n    afirmaciones_sin_respaldo: juezOutput.afirmaciones_sin_respaldo,\n    justificacion: juezOutput.justificacion,\n    categoria_error: juezOutput.categoria_error,\n    exactitud_factual: juezOutput.exactitud_factual,\n    estado_veredicto: juezOutput.estado_veredicto,\n    critica: juezOutput.critica,\n    verbosidad_excesiva: juezOutput.verbosidad_excesiva,\n    id_registro: $('Log Worker').first().json.id_registro,\n    status: 'success',\n    timestamp: new Date().toISOString(),\n    TRYS: tryAnterior + 1\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        288
+      ],
+      "id": "cd5c5479-849c-4905-9547-973c140f22d5",
+      "name": "Resume"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1092310944,
+          "mode": "list",
+          "cachedResultName": "JUDGE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1092310944"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_REQUEST": "={{ $('IMPUT').item.json.ID_REQUEST }}",
+            "QUESTION": "={{ $('IMPUT').item.json.QUESTION }}",
+            "ANSWER": "={{ $('IMPUT').item.json.ANSWER }}",
+            "CONTEXT": "={{ $('IMPUT').item.json.CONTEXT }}",
+            "UMBRAL": "={{ $('IMPUT').item.json.UMBRAL }}",
+            "datetime": "={{ $now }}",
+            "inconsistencias_detectadas": "={{ $json.output[0].content[0].text.inconsistencias_detectadas }}",
+            "afirmaciones_sin_respaldo": "={{ $json.output[0].content[0].text.afirmaciones_sin_respaldo }}",
+            "justificacion": "={{ $json.output[0].content[0].text.justificacion }}",
+            "categoria_error": "={{ $json.output[0].content[0].text.categoria_error }}",
+            "exactitud_factual": "={{ $json.output[0].content[0].text.exactitud_factual }}",
+            "estado_veredicto": "={{ $json.output[0].content[0].text.estado_veredicto }}",
+            "critica": "={{ $json.output[0].content[0].text.critica }}",
+            "verbosidad_excesiva": "={{ $json.output[0].content[0].text.verbosidad_excesiva }}",
+            "TRYS": "={{ $('IMPUT').item.json.TRY+1 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_REQUEST",
+              "displayName": "ID_REQUEST",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "QUESTION",
+              "displayName": "QUESTION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ANSWER",
+              "displayName": "ANSWER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTEXT",
+              "displayName": "CONTEXT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "UMBRAL",
+              "displayName": "UMBRAL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "inconsistencias_detectadas",
+              "displayName": "inconsistencias_detectadas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "afirmaciones_sin_respaldo",
+              "displayName": "afirmaciones_sin_respaldo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "justificacion",
+              "displayName": "justificacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "categoria_error",
+              "displayName": "categoria_error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "exactitud_factual",
+              "displayName": "exactitud_factual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado_veredicto",
+              "displayName": "estado_veredicto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "critica",
+              "displayName": "critica",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "verbosidad_excesiva",
+              "displayName": "verbosidad_excesiva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TRYS",
+              "displayName": "TRYS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "datetime",
+              "displayName": "datetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        304
+      ],
+      "id": "eaabfb57-645a-4d98-87a2-a80e10e67cd3",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Juez": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IMPUT": {
+      "main": [
+        [
+          {
+            "node": "Juez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Worker": {
+      "main": [
+        [
+          {
+            "node": "Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume": {
+      "main": [
+        []
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Log Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b92a7c24-0ff9-482b-9928-95b170eadeed",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "20171f703fd16a690fa64930f505996473079639ec27570bd8942aa4597d8c09"
+  },
+  "nodeGroups": [],
+  "id": "AaPsF6F1O8JDEPas",
+  "tags": []
+}

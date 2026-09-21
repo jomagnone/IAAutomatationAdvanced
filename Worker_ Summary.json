@@ -1,0 +1,439 @@
+{
+  "name": "Worker: Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst historial = items.map(item => {\n  return `Cliente: ${item.json.QUESTION}\\nAgente: ${item.json.ANSWER}`;\n}).join('\\n');\n\nreturn [{ json: { historial } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        128
+      ],
+      "id": "fe2372aa-a170-4469-89ad-e8cc068d7a21",
+      "name": "Colapse Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sos un asistente que resume conversaciones de atención al cliente para que otro agente de IA pueda retomar la conversación sin perder contexto.\n\nVas a recibir el historial completo de una conversación entre un cliente y un agente comercial de electrodomésticos, en formato:\nCliente: ...\nAgente: ...\n\nTu tarea es generar un resumen orientado a la continuidad de la atención — no un resumen narrativo genérico. El agente que va a leer esto necesita saber, en pocas palabras, en qué punto quedó la conversación y qué falta resolver, para poder seguir atendiendo al cliente sin repetir preguntas ya respondidas ni perder el hilo.\n\nPara armar el resumen, enfocate en:\n- Qué buscaba el cliente originalmente.\n- Qué información ya se obtuvo o se le brindó.\n- Qué información todavía falta para poder cerrar el caso (si aplica).\n- Si queda alguna gestión pendiente (por ejemplo, esperando aprobación humana, esperando que el cliente aclare algo, esperando una respuesta del cliente) o si el caso ya está resuelto y no requiere seguimiento.\n\nAdemás, extraé una lista de datos clave (KEY_DATA): información puntual y reutilizable mencionada durante la conversación que sea útil recordar (por ejemplo: productos mencionados, preferencias del cliente, montos, plazos, o cualquier dato concreto que no convenga volver a preguntar).\n\nDevolvé SOLO un JSON válido (sin texto adicional, sin backticks) con exactamente estos campos:\n{\n  \"SUMMARY\": \"\",\n  \"KEY_DATA\": [],\n}\nConversacion:\n {{ $json.historial }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1568,
+        128
+      ],
+      "id": "62ef76c3-f2ce-4d1f-8ec6-85ba7a510cfa",
+      "name": "Generate Summary"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1356363943,
+          "mode": "list",
+          "cachedResultName": "CLIENTS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1356363943"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_SESSION": "={{ $('Start').item.json.ID_SESSION }}",
+            "NAME": "={{ $('Start').item.json.NAME }}",
+            "LAST_UPDATED": "={{ $now }}",
+            "SUMMARY": "={{ $json.SUMMARY }}",
+            "KEY_DATA": "={{ $json.KEY_DATA }}",
+            "MESSAGE_COUNT": "={{ $('Start').first().json.MESSAGE_COUNT_firstItem +1 }}",
+            "STATUS": "=\"\""
+          },
+          "matchingColumns": [
+            "ID_SESSION"
+          ],
+          "schema": [
+            {
+              "id": "ID_SESSION",
+              "displayName": "ID_SESSION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NAME",
+              "displayName": "NAME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LAST_UPDATED",
+              "displayName": "LAST_UPDATED",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SUMMARY",
+              "displayName": "SUMMARY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "KEY_DATA",
+              "displayName": "KEY_DATA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MESSAGE_COUNT",
+              "displayName": "MESSAGE_COUNT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2064,
+        128
+      ],
+      "id": "b608cd1a-a4a4-4d63-bbe0-da173e533581",
+      "name": "Save Summary",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst clean = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(clean);\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        128
+      ],
+      "id": "135cbf91-5d66-4292-8a02-f554b383127b",
+      "name": "Parser Summary"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-6",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        352
+      ],
+      "id": "084a9923-33f4-4a42-9756-8a1846a083ea",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "gAISLJCZ0hQRbtzH",
+          "name": "Anthropic account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "ID_SESSION",
+              "type": "any"
+            },
+            {
+              "name": "ID_REQUEST"
+            },
+            {
+              "name": "NAME"
+            }
+          ]
+        }
+      },
+      "id": "d2bf9bd4-5d16-4200-ad54-8233b878607c",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        976,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "REQUEST",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID_SESSION",
+              "lookupValue": "={{ $json.ID_SESSION }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1152,
+        128
+      ],
+      "id": "3b2596dd-37d7-44cb-93de-0a3a3466ec5c",
+      "name": "Get Request",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco",
+          "mode": "list",
+          "cachedResultName": "Base De datos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1724766404,
+          "mode": "list",
+          "cachedResultName": "WORKER",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JluzG3jCkNrjriqxa_ftty657aJrscz5zjE4BiMWXco/edit#gid=1724766404"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_REQUEST": "={{ $('Start').item.json.ID_REQUEST }}",
+            "DATE_TIME": "={{ $now }}",
+            "WORKER": "SUMMARY",
+            "CODE": "200"
+          },
+          "matchingColumns": [
+            "ID_SESSION"
+          ],
+          "schema": [
+            {
+              "id": "ID_REQUEST",
+              "displayName": "ID_REQUEST",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "DATE_TIME",
+              "displayName": "DATE_TIME",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "WORKER",
+              "displayName": "WORKER",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CODE",
+              "displayName": "CODE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2304,
+        128
+      ],
+      "id": "11584dc1-535e-47ec-af23-94ee4079cbde",
+      "name": "Log Worker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "IoXdsRZcLzrotUaE",
+          "name": "Base de Datos"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Colapse Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary": {
+      "main": [
+        [
+          {
+            "node": "Parser Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser Summary": {
+      "main": [
+        [
+          {
+            "node": "Save Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Summary",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Get Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request": {
+      "main": [
+        [
+          {
+            "node": "Colapse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Summary": {
+      "main": [
+        [
+          {
+            "node": "Log Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "10a5af92-8eb5-419a-8d57-502621678dc4",
+  "meta": {
+    "instanceId": "20171f703fd16a690fa64930f505996473079639ec27570bd8942aa4597d8c09"
+  },
+  "nodeGroups": [],
+  "id": "OAXk24GQw1oJXg6a",
+  "tags": []
+}
